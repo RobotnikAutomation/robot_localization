@@ -181,6 +181,10 @@ namespace RobotLocalization
     {
       imu_sub_ = nh.subscribe("imu/data", 1, &NavSatTransform::imuCallback, this);
     }
+    if( use_odometry_yaw_ == true)
+    {
+      has_transform_imu_ = true;
+    }
 
     gps_odom_pub_ = nh.advertise<nav_msgs::Odometry>("odometry/gps", 10);
 
@@ -263,6 +267,7 @@ namespace RobotLocalization
       double imu_pitch;
       double imu_yaw;
       mat.getRPY(imu_roll, imu_pitch, imu_yaw);
+      ROS_INFO_STREAM("Initial imu_yaw = " << imu_yaw);
 
       /* The IMU's heading was likely originally reported w.r.t. magnetic north.
        * However, all the nodes in robot_localization assume that orientation data,
@@ -729,7 +734,7 @@ namespace RobotLocalization
         rpy_angles = mat * rpy_angles;
         transform_orientation_.setRPY(rpy_angles.getX(), rpy_angles.getY(), rpy_angles.getZ());
 
-        ROS_DEBUG_STREAM("Initial corrected orientation roll, pitch, yaw is (" <<
+        ROS_INFO_STREAM("Initial corrected orientation roll, pitch, yaw is (" <<
                          rpy_angles.getX() << ", " << rpy_angles.getY() << ", " << rpy_angles.getZ() << ")");
 
         has_transform_imu_ = true;
@@ -894,7 +899,9 @@ namespace RobotLocalization
         ROS_ERROR_STREAM_THROTTLE(1.0, e.what());
         return;
       }
-      utm_meridian_convergence_ = utm_meridian_convergence_degrees * NavsatConversions::RADIANS_PER_DEGREE;
+      //utm_meridian_convergence_ = utm_meridian_convergence_degrees * NavsatConversions::RADIANS_PER_DEGREE;
+      // UTM meridian convergence forced to 0.0
+      utm_meridian_convergence_ = 0.0;
     }
 
     ROS_INFO_STREAM("Datum (latitude, longitude, altitude) is (" << std::fixed << msg->latitude << ", " <<
@@ -920,12 +927,13 @@ namespace RobotLocalization
     // Cartesian->world_frame transform.
     if (!transform_good_ && use_odometry_yaw_ && !use_manual_datum_)
     {
-      sensor_msgs::Imu *imu = new sensor_msgs::Imu();
+      /*sensor_msgs::Imu *imu = new sensor_msgs::Imu();
       imu->orientation = msg->pose.pose.orientation;
       imu->header.frame_id = msg->child_frame_id;
       imu->header.stamp = msg->header.stamp;
       sensor_msgs::ImuConstPtr imuPtr(imu);
-      imuCallback(imuPtr);
+      imuCallback(imuPtr);*/
+      transform_orientation_.setRPY(0, 0, 0);
     }
   }
 
